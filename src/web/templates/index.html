@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+
+{% block title %}Agentic Segmentation Pipeline - Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white p-5 rounded mb-4">
+            <h1 class="display-4">
+                <i class="fas fa-brain me-3"></i>
+                Agentic Segmentation Pipeline
+            </h1>
+            <p class="lead">
+                Zero-context object detection and segmentation powered by Qwen 2.5/3 MLLM and SAM
+            </p>
+            <hr class="my-4" style="border-color: rgba(255,255,255,0.3);">
+            <p>
+                Upload an image and let our AI automatically detect and segment objects without any manual prompts or context.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Image Upload Section -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    Upload Image
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Drag & Drop Image Here</h5>
+                        <p class="text-muted">or click to browse</p>
+                        <input type="file" id="imageInput" name="image" accept="image/*" class="d-none" required>
+                        <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('imageInput').click()">
+                            <i class="fas fa-folder-open me-2"></i>Browse Files
+                        </button>
+                    </div>
+                    
+                    <div class="mt-3" id="imagePreview" style="display: none;">
+                        <img id="previewImg" class="img-fluid rounded" style="max-height: 300px;">
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearImage()">
+                                <i class="fas fa-times me-1"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Processing Options -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cog me-2"></i>
+                    Processing Options
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="mode" class="form-label">Processing Mode</label>
+                        <select class="form-select" id="mode" name="mode">
+                            <option value="automatic">Automatic</option>
+                            <option value="guided">Guided</option>
+                            <option value="interactive">Interactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="detailLevel" class="form-label">Detail Level</label>
+                        <select class="form-select" id="detailLevel" name="detail_level">
+                            <option value="basic">Basic</option>
+                            <option value="detailed">Detailed</option>
+                            <option value="comprehensive" selected>Comprehensive</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label for="confidenceThreshold" class="form-label">
+                            Confidence Threshold: <span id="confidenceValue">0.5</span>
+                        </label>
+                        <input type="range" class="form-range" id="confidenceThreshold" 
+                               name="confidence_threshold" min="0.1" max="0.9" step="0.1" value="0.5">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="maxObjects" class="form-label">
+                            Max Objects: <span id="maxObjectsValue">20</span>
+                        </label>
+                        <input type="range" class="form-range" id="maxObjects" 
+                               name="max_objects" min="5" max="50" step="5" value="20">
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <button type="button" class="btn btn-primary btn-lg w-100" id="processBtn" onclick="processImage()">
+                        <i class="fas fa-magic me-2"></i>
+                        Process Image
+                        <div class="loading">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Processing...
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-eye me-2"></i>
+                    Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="resultsContent">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-image fa-3x mb-3"></i>
+                        <h5>No Results Yet</h5>
+                        <p>Upload an image and click "Process Image" to see results</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Object Details -->
+        <div class="card mt-3" id="objectDetailsCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Detected Objects
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="objectDetails"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Batch Processing Section -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-images me-2"></i>
+                    Batch Processing
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="batchForm" enctype="multipart/form-data">
+                    <div class="upload-area" id="batchUploadArea">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Drag & Drop Multiple Images Here</h5>
+                        <p class="text-muted">or click to browse multiple files</p>
+                        <input type="file" id="batchImageInput" name="images" accept="image/*" multiple class="d-none">
+                        <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('batchImageInput').click()">
+                            <i class="fas fa-folder-open me-2"></i>Browse Files
+                        </button>
+                    </div>
+                    
+                    <div class="mt-3" id="batchPreview" style="display: none;">
+                        <div id="batchImagesList"></div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-success btn-lg w-100" id="batchProcessBtn" onclick="processBatch()">
+                            <i class="fas fa-magic me-2"></i>
+                            Process Batch
+                            <div class="loading">
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                Processing...
+                            </div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Image upload handling
+    document.getElementById('imageInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImg').src = e.target.result;
+                document.getElementById('imagePreview').style.display = 'block';
+                document.getElementById('uploadArea').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Batch image upload handling
+    document.getElementById('batchImageInput').addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            const batchList = document.getElementById('batchImagesList');
+            batchList.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'img-thumbnail me-2 mb-2';
+                    img.style.width = '100px';
+                    img.style.height = '100px';
+                    img.style.objectFit = 'cover';
+                    batchList.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            document.getElementById('batchPreview').style.display = 'block';
+            document.getElementById('batchUploadArea').style.display = 'none';
+        }
+    });
+    
+    // Range slider updates
+    document.getElementById('confidenceThreshold').addEventListener('input', function(e) {
+        document.getElementById('confidenceValue').textContent = e.target.value;
+    });
+    
+    document.getElementById('maxObjects').addEventListener('input', function(e) {
+        document.getElementById('maxObjectsValue').textContent = e.target.value;
+    });
+    
+    // Drag and drop functionality
+    const uploadArea = document.getElementById('uploadArea');
+    const batchUploadArea = document.getElementById('batchUploadArea');
+    
+    [uploadArea, batchUploadArea].forEach(area => {
+        area.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            area.classList.add('dragover');
+        });
+        
+        area.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            area.classList.remove('dragover');
+        });
+        
+        area.addEventListener('drop', function(e) {
+            e.preventDefault();
+            area.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                if (area === uploadArea) {
+                    document.getElementById('imageInput').files = files;
+                    document.getElementById('imageInput').dispatchEvent(new Event('change'));
+                } else {
+                    document.getElementById('batchImageInput').files = files;
+                    document.getElementById('batchImageInput').dispatchEvent(new Event('change'));
+                }
+            }
+        });
+    });
+    
+    function clearImage() {
+        document.getElementById('imageInput').value = '';
+        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('uploadArea').style.display = 'block';
+    }
+    
+    function processImage() {
+        const formData = new FormData();
+        const imageFile = document.getElementById('imageInput').files[0];
+        
+        if (!imageFile) {
+            showAlert('Please select an image first.', 'warning');
+            return;
+        }
+        
+        formData.append('image', imageFile);
+        formData.append('mode', document.getElementById('mode').value);
+        formData.append('detail_level', document.getElementById('detailLevel').value);
+        formData.append('confidence_threshold', document.getElementById('confidenceThreshold').value);
+        formData.append('max_objects', document.getElementById('maxObjects').value);
+        
+        showLoading($('#processBtn'));
+        
+        fetch('/api/process', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading($('#processBtn'));
+            
+            if (data.success) {
+                displayResults(data);
+            } else {
+                showAlert('Error: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            hideLoading($('#processBtn'));
+            showAlert('Error: ' + error.message, 'danger');
+        });
+    }
+    
+    function processBatch() {
+        const formData = new FormData();
+        const imageFiles = document.getElementById('batchImageInput').files;
+        
+        if (imageFiles.length === 0) {
+            showAlert('Please select images first.', 'warning');
+            return;
+        }
+        
+        for (let i = 0; i < imageFiles.length; i++) {
+            formData.append('images', imageFiles[i]);
+        }
+        formData.append('mode', document.getElementById('mode').value);
+        formData.append('parallel', 'true');
+        
+        showLoading($('#batchProcessBtn'));
+        
+        fetch('/api/process_batch', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading($('#batchProcessBtn'));
+            
+            if (data.success) {
+                displayBatchResults(data);
+            } else {
+                showAlert('Error: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            hideLoading($('#batchProcessBtn'));
+            showAlert('Error: ' + error.message, 'danger');
+        });
+    }
+    
+    function displayResults(data) {
+        const resultsContent = document.getElementById('resultsContent');
+        const objectDetailsCard = document.getElementById('objectDetailsCard');
+        const objectDetails = document.getElementById('objectDetails');
+        
+        // Display visualization
+        resultsContent.innerHTML = `
+            <div class="text-center">
+                <img src="/api/visualize/${data.visualization}" class="img-fluid rounded" alt="Segmentation Results">
+                <div class="mt-3">
+                    <h6>Processing Results</h6>
+                    <p class="text-muted">
+                        <strong>Objects Detected:</strong> ${data.objects_detected}<br>
+                        <strong>Processing Time:</strong> ${data.processing_time.toFixed(2)}s<br>
+                        <strong>Model:</strong> ${data.model_info.engine_type}
+                    </p>
+                </div>
+            </div>
+        `;
+        
+        // Display object details
+        if (data.objects.length > 0) {
+            objectDetails.innerHTML = '';
+            data.objects.forEach((obj, index) => {
+                const confidenceColor = getConfidenceColor(obj.confidence);
+                const objectItem = document.createElement('div');
+                objectItem.className = 'object-item';
+                objectItem.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${index + 1}. ${obj.label}</strong>
+                            <br>
+                            <small class="text-muted">Area: ${obj.area} pixels</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="confidence-bar" style="width: 100px; margin-bottom: 5px;">
+                                <div class="confidence-fill" style="width: ${obj.confidence * 100}%; background-color: ${confidenceColor};"></div>
+                            </div>
+                            <small style="color: ${confidenceColor};">${formatConfidence(obj.confidence)}</small>
+                        </div>
+                    </div>
+                `;
+                objectDetails.appendChild(objectItem);
+            });
+            objectDetailsCard.style.display = 'block';
+        } else {
+            objectDetailsCard.style.display = 'none';
+        }
+    }
+    
+    function displayBatchResults(data) {
+        showAlert(`Batch processing completed! Processed ${data.total_images} images.`, 'success');
+        
+        // Display batch results in a modal or expandable section
+        const batchResultsHtml = `
+            <div class="mt-3">
+                <h6>Batch Processing Results</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Objects</th>
+                                <th>Time</th>
+                                <th>Top Objects</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.results.map(result => `
+                                <tr>
+                                    <td>${result.filename}</td>
+                                    <td>${result.objects_detected}</td>
+                                    <td>${result.processing_time.toFixed(2)}s</td>
+                                    <td>${result.objects.slice(0, 3).map(obj => obj.label).join(', ')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('batchPreview').innerHTML += batchResultsHtml;
+    }
+</script>
+{% endblock %}
