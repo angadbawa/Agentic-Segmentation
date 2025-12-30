@@ -2,8 +2,6 @@
 
 Zero-Context Agentic Object Detection & Segmentation Pipeline that automatically generates prompts, extracts embeddings, and leverages SAM (Segment Anything Model) for object detection and segmentation tasks without requiring manual context or prompts. 
 
-**Now enhanced with Qwen 2.5/3 MLLM for superior vision-language understanding!**
-
 ## Key Features
 
 - **Zero Context Required**: Automatically generates prompts and context without manual intervention
@@ -292,4 +290,5 @@ This project is licensed under the GNU [LICENSE](LICENSE) file for details.
 - [ ] Mobile app integration
 - [ ] Cloud deployment options
 - [ ] Advanced visualization tools
+
 
