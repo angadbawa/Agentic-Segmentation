@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Startup script for Flask application
-"""
-
 import os
 import sys
 from pathlib import Path
