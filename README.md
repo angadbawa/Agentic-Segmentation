@@ -155,9 +155,7 @@ config = Config(
 
 - **Autonomous Object Detection**: Detect and segment objects without manual prompts
 - **Scene Understanding**: Comprehensive analysis of complex scenes
-- **Custom Object Recognition**: Learn and recognize specific objects over time
 - **Batch Processing**: Efficient processing of large image datasets
-- **Research & Development**: Advanced computer vision research applications
 
 ## Project Structure
 
